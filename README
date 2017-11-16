@@ -1,0 +1,83 @@
+
+
+        new file:   dtls-udp-proxy/pom.xml
+        new file: dtls-udp-proxy/src/main/java/odins/ezequiel/dtlsproxy/CoapForwardTable.java
+        new file: dtls-udp-proxy/src/main/java/odins/ezequiel/dtlsproxy/DTLSProxy.java
+        new file: dtls-udp-proxy/src/main/java/odins/ezequiel/dtlsproxy/DTLSSocket.java
+        new file: dtls-udp-proxy/src/main/java/odins/ezequiel/dtlsproxy/DTLSSocketTable.java
+        new file: dtls-udp-proxy/src/main/java/odins/ezequiel/dtlsproxy/DynamicProxyController.java
+        new file: dtls-udp-proxy/src/main/java/odins/ezequiel/dtlsproxy/ForwardTable.java
+        new file: dtls-udp-proxy/src/main/java/odins/ezequiel/dtlsproxy/Socket.java
+        new file: dtls-udp-proxy/src/main/java/odins/ezequiel/dtlsproxy/SocketListener.java
+        new file: dtls-udp-proxy/src/main/java/odins/ezequiel/dtlsproxy/UDPSocket.java
+        new file:   init-java-dynamicProxyDTLS.sh
+        new file:   init-java-proxyDTLS.sh
+
+
+
+============================
+ Application
+============================
+
+DTLSProxy supports dynamic sockets according UDP queries from the port 50000.
+Mapping DTLS port for (40000 + node_id) to UDP port (50000 + node_id)
+All motes has server DTLS+COAP in port 5684 and IPv6(aaaa::node_id).
+
+============================
+== Usage ==
+============================
+
+init-java-dynamicProxyDTLS.sh
+init-java-proxyDTLS.sh                  # Run
+
+============================
+ Important Files
+============================
+
+dtls-udp-proxy/src/main/java/odins/ezequiel/dtlsproxy/DTLSProxy.java   // A quick program to make the proxy between DTLS connections and UDP connections.  
+
+============================
+ Implemented Files
+============================
+
+        new file: dtls-udp-proxy/src/main/java/odins/ezequiel/dtlsproxy/CoapForwardTable.java
+        new file: dtls-udp-proxy/src/main/java/odins/ezequiel/dtlsproxy/DTLSProxy.java
+        new file: dtls-udp-proxy/src/main/java/odins/ezequiel/dtlsproxy/DTLSSocket.java
+        new file: dtls-udp-proxy/src/main/java/odins/ezequiel/dtlsproxy/DTLSSocketTable.java
+        new file: dtls-udp-proxy/src/main/java/odins/ezequiel/dtlsproxy/DynamicProxyController.java
+        new file: dtls-udp-proxy/src/main/java/odins/ezequiel/dtlsproxy/ForwardTable.java
+        new file: dtls-udp-proxy/src/main/java/odins/ezequiel/dtlsproxy/Socket.java
+        new file: dtls-udp-proxy/src/main/java/odins/ezequiel/dtlsproxy/SocketListener.java
+        new file: dtls-udp-proxy/src/main/java/odins/ezequiel/dtlsproxy/UDPSocket.java
+        new file: init-java-dynamicProxyDTLS.sh
+        new file: init-java-proxyDTLS.sh
+
+============================
+ Adapted Files
+============================
+
+
+============================
+ Compile Application
+============================
+
+eclipse 
+
+============================
+ Documentation Files
+============================
+
+README
+README.md
+
+============================
+ Features
+============================
+
+* Scandium (Sc) is a DTLS 1.2 implementation for the Californium (Cf) CoAP framework.
+
+
+
+
+
+ 
