@@ -36,7 +36,6 @@ import org.eclipse.californium.scandium.dtls.AlertMessage.AlertLevel;
 import org.eclipse.californium.scandium.util.DatagramReader;
 import org.eclipse.californium.scandium.util.DatagramWriter;
 
-
 /**
  * The server MUST send a Certificate message whenever the agreed-upon key
  * exchange method uses certificates for authentication. This message will
@@ -50,7 +49,7 @@ public class CertificateMessage extends HandshakeMessage {
 	private static final Logger LOGGER = Logger.getLogger(CertificateMessage.class.getCanonicalName());
 
 	// DTLS-specific constants ///////////////////////////////////////////
-	
+
 	/**
 	 * <a href="http://tools.ietf.org/html/rfc5246#section-7.4.2">RFC 5246</a>:
 	 * <code>opaque ASN.1Cert<1..2^24-1>;</code>
@@ -76,7 +75,7 @@ public class CertificateMessage extends HandshakeMessage {
 
 	/** The total length of the {@link CertificateMessage}. */
 	private int messageLength;
-	
+
 	/**
 	 * The SubjectPublicKeyInfo part of the X.509 certificate. Used in
 	 * constrained environments for smaller message size.
@@ -123,7 +122,7 @@ public class CertificateMessage extends HandshakeMessage {
 			if (encodedChain == null) {
 				messageLength = 3;
 				encodedChain = new ArrayList<byte[]>(certificateChain.length);
-				for (Certificate cert : certificateChain) {
+				for(Certificate cert: certificateChain) {
 					try {
 						byte[] encoded = cert.getEncoded();
 						encodedChain.add(encoded);
@@ -134,20 +133,25 @@ public class CertificateMessage extends HandshakeMessage {
 						messageLength += encoded.length + 3;
 					} catch (CertificateEncodingException e) {
 						encodedChain = null;
-						LOGGER.log(Level.SEVERE,"Could not encode the certificate.", e);
+						LOGGER.log(Level.SEVERE, "Could not encode the certificate.", e);
 					}
 				}
 			}
-		} else {
+		}
+		else {
 			// fixed: 3 bytes for certificates length field + 3 bytes for
 			// certificate length
 			messageLength = 6 + rawPublicKeyBytes.length;
-			// TODO still unclear whether the payload only consists of the raw public key
-			
+			// TODO still unclear whether the payload only consists of the raw
+			// public key
+
 			// http://tools.ietf.org/html/draft-ietf-tls-oob-pubkey-03#section-3.2:
-			// "If the negotiated certificate type is RawPublicKey the TLS server
-			// MUST place the SubjectPublicKeyInfo structure into the Certificate
-			// payload. The public key MUST match the selected key exchange algorithm."
+			// "If the negotiated certificate type is RawPublicKey the TLS
+			// server
+			// MUST place the SubjectPublicKeyInfo structure into the
+			// Certificate
+			// payload. The public key MUST match the selected key exchange
+			// algorithm."
 		}
 		return messageLength;
 	}
@@ -159,13 +163,14 @@ public class CertificateMessage extends HandshakeMessage {
 		if (rawPublicKeyBytes == null) {
 			sb.append("\t\tCertificates Length: " + (getMessageLength() - 3) + "\n");
 			int index = 0;
-			for (Certificate cert : certificateChain) {
+			for(Certificate cert: certificateChain) {
 				sb.append("\t\t\tCertificate Length: " + encodedChain.get(index).length + "\n");
 				sb.append("\t\t\tCertificate: " + cert.toString() + "\n");
 
 				index++;
 			}
-		} else {
+		}
+		else {
 			sb.append("\t\tRaw Public Key: ");
 			sb.append(getPublicKey().toString());
 			sb.append("\n");
@@ -177,12 +182,13 @@ public class CertificateMessage extends HandshakeMessage {
 	public Certificate[] getCertificateChain() {
 		return certificateChain;
 	}
-	
+
 	/**
 	 * Tries to verify the peer's certificate. Checks its validity and verifies
 	 * that it was signed with the stated private key.
 	 * 
-	 * @param trustedCertificates the list of trusted certificates
+	 * @param trustedCertificates
+	 *            the list of trusted certificates
 	 * 
 	 * @throws HandshakeException
 	 *             if the certificate could not be verified.
@@ -198,7 +204,7 @@ public class CertificateMessage extends HandshakeMessage {
 				AlertMessage alert = new AlertMessage(AlertLevel.FATAL, AlertDescription.CERTIFICATE_EXPIRED);
 				throw new HandshakeException("Certificate not valid.", alert);
 			}
-			
+
 			if (isSelfSigned(peerCertificate)) {
 				// TODO allow self-signed certificates?
 				LOGGER.info("Peer used self-signed certificate.");
@@ -218,7 +224,7 @@ public class CertificateMessage extends HandshakeMessage {
 			}
 		}
 	}
-	
+
 	/**
 	 * Tries to validate the certificate chain with the given intermediate and
 	 * trusted certificates.
@@ -232,13 +238,14 @@ public class CertificateMessage extends HandshakeMessage {
 	 * @return <code>true</code> if the chain could be validated,
 	 *         <code>false</code> otherwise.
 	 */
-	public boolean validateKeyChain(X509Certificate certificate, Certificate[] intermediateCertificates, Certificate[] trustedCertificates) {
-		
+	public boolean validateKeyChain(X509Certificate certificate, Certificate[] intermediateCertificates,
+			Certificate[] trustedCertificates) {
+
 		// first check all the intermediate certificates, if one of these signed
 		// the chain's end certificate
-		for (Certificate cert : intermediateCertificates) {
+		for(Certificate cert: intermediateCertificates) {
 			X509Certificate intermediateCertificate = (X509Certificate) cert;
-			
+
 			if (certificate.getIssuerX500Principal().equals(intermediateCertificate.getSubjectX500Principal())) {
 				try {
 					certificate.verify(intermediateCertificate.getPublicKey());
@@ -255,10 +262,10 @@ public class CertificateMessage extends HandshakeMessage {
 			}
 
 		}
-		
+
 		// check all trusted certificates, if one of theses is the root of the
 		// certificate chain
-		for (Certificate cert : trustedCertificates) {
+		for(Certificate cert: trustedCertificates) {
 			X509Certificate trustedCertificate = (X509Certificate) cert;
 
 			if (certificate.getIssuerX500Principal().equals(trustedCertificate.getSubjectX500Principal())) {
@@ -270,7 +277,8 @@ public class CertificateMessage extends HandshakeMessage {
 
 				if (isSelfSigned(trustedCertificate)) {
 					return true;
-				} else if (!certificate.equals(trustedCertificate)) {
+				}
+				else if (!certificate.equals(trustedCertificate)) {
 					// follow next step of the chain
 					return validateKeyChain(trustedCertificate, intermediateCertificates, trustedCertificates);
 				}
@@ -281,7 +289,7 @@ public class CertificateMessage extends HandshakeMessage {
 		// no valid chain found
 		return false;
 	}
-	
+
 	/**
 	 * Checks whether this certificate was signed with the private key that
 	 * corresponds to this certificates public key.
@@ -293,14 +301,14 @@ public class CertificateMessage extends HandshakeMessage {
 	 */
 	private boolean isSelfSigned(X509Certificate certificate) {
 		try {
-            certificate.verify(certificate.getPublicKey());
-            
-            return true;
-        } catch (Exception e) {
-        	// the certificate was not signed with this public key
-            return false;
-        }
-    }
+			certificate.verify(certificate.getPublicKey());
+
+			return true;
+		} catch (Exception e) {
+			// the certificate was not signed with this public key
+			return false;
+		}
+	}
 
 	// Serialization //////////////////////////////////////////////////
 
@@ -310,14 +318,15 @@ public class CertificateMessage extends HandshakeMessage {
 
 		if (rawPublicKeyBytes == null) {
 			// the size of the certificate chain
-			writer.write(getMessageLength() - (CERTIFICATE_LIST_LENGTH/8), CERTIFICATE_LIST_LENGTH);
-			for (byte[] encoded : encodedChain) {
+			writer.write(getMessageLength() - (CERTIFICATE_LIST_LENGTH / 8), CERTIFICATE_LIST_LENGTH);
+			for(byte[] encoded: encodedChain) {
 				// the size of the current certificate
 				writer.write(encoded.length, CERTIFICATE_LENGTH_BITS);
 				// the encoded current certificate
 				writer.writeBytes(encoded);
 			}
-		} else {
+		}
+		else {
 			writer.write(getMessageLength() - 3, CERTIFICATE_LIST_LENGTH);
 			writer.write(rawPublicKeyBytes.length, CERTIFICATE_LENGTH_BITS);
 			writer.writeBytes(rawPublicKeyBytes);
@@ -331,13 +340,19 @@ public class CertificateMessage extends HandshakeMessage {
 		DatagramReader reader = new DatagramReader(byteArray);
 
 		int certificateChainLength = reader.read(CERTIFICATE_LENGTH_BITS);
-		
+
 		CertificateMessage message;
 		if (useRawPublicKey) {
 			int certificateLength = reader.read(CERTIFICATE_LENGTH_BITS);
 			byte[] rawPublicKey = reader.readBytes(certificateLength);
+
+//			System.out.printf("CertificateMessage/fromByteArray: RAW_PUBLIC_KEY / certificateLength %d\n%s\n",
+//					certificateLength,
+//					org.eclipse.californium.scandium.util.Utils.asHexCut20(rawPublicKey, 0, rawPublicKey.length));
+			
 			message = new CertificateMessage(rawPublicKey);
-		} else {
+		}
+		else {
 			List<Certificate> certs = new ArrayList<Certificate>();
 
 			CertificateFactory certificateFactory = null;
@@ -345,8 +360,9 @@ public class CertificateMessage extends HandshakeMessage {
 				int certificateLength = reader.read(CERTIFICATE_LENGTH_BITS);
 				byte[] certificate = reader.readBytes(certificateLength);
 
-				// the size of the length and the actual length of the encoded certificate
-				certificateChainLength -= (CERTIFICATE_LENGTH_BITS/8) + certificateLength;
+				// the size of the length and the actual length of the encoded
+				// certificate
+				certificateChainLength -= (CERTIFICATE_LENGTH_BITS / 8) + certificateLength;
 
 				try {
 					if (certificateFactory == null) {
@@ -356,14 +372,14 @@ public class CertificateMessage extends HandshakeMessage {
 					Certificate cert = certificateFactory.generateCertificate(new ByteArrayInputStream(certificate));
 					certs.add(cert);
 				} catch (CertificateException e) {
-					LOGGER.log(Level.SEVERE,"Could not generate the certificate.",e);
+					LOGGER.log(Level.SEVERE, "Could not generate the certificate.", e);
 					break;
 				}
 			}
 
 			message = new CertificateMessage(certs.toArray(new X509Certificate[certs.size()]));
 		}
-		
+
 		return message;
 	}
 
@@ -375,14 +391,19 @@ public class CertificateMessage extends HandshakeMessage {
 
 		if (rawPublicKeyBytes == null) {
 			publicKey = certificateChain[0].getPublicKey();
-		} else {
+		}
+		else {
 			// get server's public key from Raw Public Key
 			EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(rawPublicKeyBytes);
+			
+//			System.out.printf("CertificateMessage/getPublicKey\n%s\n",
+//				org.eclipse.californium.scandium.util.Utils.asHexCut20(rawPublicKeyBytes, 0, rawPublicKeyBytes.length));
+			
 			try {
 				// TODO make instance variable
 				publicKey = KeyFactory.getInstance("EC").generatePublic(publicKeySpec);
 			} catch (Exception e) {
-				LOGGER.log(Level.SEVERE,"Could not reconstruct the server's public key.",e);
+				LOGGER.log(Level.SEVERE, "Could not reconstruct the server's public key.", e);
 			}
 		}
 		return publicKey;

@@ -40,7 +40,6 @@ import org.eclipse.californium.scandium.dtls.cipher.ECDHECryptography;
 import org.eclipse.californium.scandium.dtls.pskstore.PskStore;
 import org.eclipse.californium.scandium.util.ByteArrayUtils;
 
-
 /**
  * Server handshaker does the protocol handshaking from the point of view of a
  * server. It is message-driven by the parent {@link Handshaker} class.
@@ -74,8 +73,8 @@ public class ServerHandshaker extends Handshaker {
 	private List<CertificateType> supportedServerCertificateTypes;
 
 	/*
-	 * Store all the messages which can possibly be sent by the client. We
-	 * need these to compute the handshake hash.
+	 * Store all the messages which can possibly be sent by the client. We need
+	 * these to compute the handshake hash.
 	 */
 	/** The client's {@link CertificateMessage}. Optional. */
 	protected CertificateMessage clientCertificate = null;
@@ -83,10 +82,10 @@ public class ServerHandshaker extends Handshaker {
 	protected ClientKeyExchange clientKeyExchange;
 	/** The client's {@link CertificateVerify}. Optional. */
 	protected CertificateVerify certificateVerify = null;
-	
+
 	/** Used to retrieve pre-shared-key from a given client identity */
 	protected final PskStore pskStore;
-	
+
 	// Constructors ///////////////////////////////////////////////////
 
 	/**
@@ -101,35 +100,34 @@ public class ServerHandshaker extends Handshaker {
 	 * @param config
 	 *            the DTLS configuration
 	 */
-	public ServerHandshaker(InetSocketAddress endpointAddress, DTLSSession session, Certificate[] rootCerts, DTLSConnectorConfig config) { 
-		super(endpointAddress, false, session,rootCerts);
+	public ServerHandshaker(InetSocketAddress endpointAddress, DTLSSession session, Certificate[] rootCerts,
+			DTLSConnectorConfig config) {
+		super(endpointAddress, false, session, rootCerts);
 
 		this.supportedCipherSuites = new ArrayList<CipherSuite>();
 		this.supportedCipherSuites.add(CipherSuite.SSL_NULL_WITH_NULL_NULL);
 		this.supportedCipherSuites.add(CipherSuite.TLS_PSK_WITH_AES_128_CCM_8);
 		this.supportedCipherSuites.add(CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8);
-		
+
 		this.pskStore = config.pskStore;
-		
+
 		this.privateKey = config.privateKey;
 		this.certificates = config.certChain;
-		this.publicKey = certificates != null && certificates.length > 0 ? certificates[0].getPublicKey() : config.publicKey;
+		this.publicKey = certificates != null && certificates.length > 0 ? certificates[0].getPublicKey()
+				: config.publicKey;
 
 		this.clientAuthenticationRequired = config.requireClientAuth;
 
 		this.supportedClientCertificateTypes = new ArrayList<>();
 		this.supportedClientCertificateTypes.add(CertificateType.X_509);
-		this.supportedClientCertificateTypes
-				.add(CertificateType.RAW_PUBLIC_KEY);
+		this.supportedClientCertificateTypes.add(CertificateType.RAW_PUBLIC_KEY);
 
 		this.supportedServerCertificateTypes = new ArrayList<>();
 		this.supportedServerCertificateTypes.add(CertificateType.X_509);
-		this.supportedServerCertificateTypes
-				.add(CertificateType.RAW_PUBLIC_KEY);
+		this.supportedServerCertificateTypes.add(CertificateType.RAW_PUBLIC_KEY);
 	}
 
 	// Methods ////////////////////////////////////////////////////////
-	
 
 	@Override
 	public synchronized DTLSFlight processMessage(Record record) throws HandshakeException {
@@ -137,10 +135,11 @@ public class ServerHandshaker extends Handshaker {
 			// we already sent the last flight, but the client did not receive
 			// it, since we received its finished message again, so we
 			// retransmit our last flight
-		    if (LOGGER.isLoggable(Level.FINER)) {
-		        LOGGER.finer("Received client's (" + endpointAddress.toString() + ") finished message again, retransmit the last flight.");
-		    }
-		    return lastFlight;
+			if (LOGGER.isLoggable(Level.FINER)) {
+				LOGGER.finer("Received client's (" + endpointAddress.toString()
+						+ ") finished message again, retransmit the last flight.");
+			}
+			return lastFlight;
 		}
 
 		DTLSFlight flight = null;
@@ -150,84 +149,90 @@ public class ServerHandshaker extends Handshaker {
 		}
 
 		switch (record.getType()) {
-		case CHANGE_CIPHER_SPEC:
-			record.getFragment();
-			setCurrentReadState();
-			session.incrementReadEpoch();
-			break;
+			case CHANGE_CIPHER_SPEC:
+				record.getFragment();
+				setCurrentReadState();
+				session.incrementReadEpoch();
+				break;
 
-		case HANDSHAKE:
-			HandshakeMessage fragment = (HandshakeMessage) record.getFragment();
+			case HANDSHAKE:
+				HandshakeMessage fragment = (HandshakeMessage) record.getFragment();
 
-			// check for fragmentation
-			if (fragment instanceof FragmentedHandshakeMessage) {
-				fragment = handleFragmentation((FragmentedHandshakeMessage) fragment);
-				if (fragment == null) {
-					// fragment could not yet be fully reassembled
-					break;
+				// check for fragmentation
+				if (fragment instanceof FragmentedHandshakeMessage) {
+					fragment = handleFragmentation((FragmentedHandshakeMessage) fragment);
+					if (fragment == null) {
+						// fragment could not yet be fully reassembled
+						break;
+					}
+					// continue with the reassembled handshake message
+					record.setFragment(fragment);
 				}
-				// continue with the reassembled handshake message
-				record.setFragment(fragment);
-			}
-			
-			switch (fragment.getMessageType()) {
-			case CLIENT_HELLO:
-				flight = receivedClientHello((ClientHello) fragment);
-				break;
 
-			case CERTIFICATE:
-				receivedClientCertificate((CertificateMessage) fragment);
-				break;
+				switch (fragment.getMessageType()) {
+					case CLIENT_HELLO:
+						flight = receivedClientHello((ClientHello) fragment);
+						break;
 
-			case CLIENT_KEY_EXCHANGE:
-				byte[] premasterSecret;
-				switch (keyExchange) {
-				case PSK:
-					premasterSecret = receivedClientKeyExchange((PSKClientKeyExchange) fragment);
-					generateKeys(premasterSecret);
-					break;
+					case CERTIFICATE:
+						receivedClientCertificate((CertificateMessage) fragment);
+						break;
 
-				case EC_DIFFIE_HELLMAN:
-					premasterSecret = receivedClientKeyExchange((ECDHClientKeyExchange) fragment);
-					generateKeys(premasterSecret);
-					break;
+					case CLIENT_KEY_EXCHANGE:
+						byte[] premasterSecret;
+						switch (keyExchange) {
+							case PSK:
+								premasterSecret = receivedClientKeyExchange((PSKClientKeyExchange) fragment);
+								generateKeys(premasterSecret);
+								break;
 
-				case NULL:
-					premasterSecret = receivedClientKeyExchange((NULLClientKeyExchange) fragment);
-					generateKeys(premasterSecret);
-					break;
+							case EC_DIFFIE_HELLMAN:
+								premasterSecret = receivedClientKeyExchange((ECDHClientKeyExchange) fragment);
+								generateKeys(premasterSecret);
+								break;
 
-				default:
-					AlertMessage alertMessage = new AlertMessage(AlertLevel.FATAL, AlertDescription.HANDSHAKE_FAILURE);
-					throw new HandshakeException("Unknown key exchange algorithm: " + keyExchange, alertMessage);
+							case NULL:
+								premasterSecret = receivedClientKeyExchange((NULLClientKeyExchange) fragment);
+								generateKeys(premasterSecret);
+								break;
+
+							default:
+								AlertMessage alertMessage = new AlertMessage(AlertLevel.FATAL,
+										AlertDescription.HANDSHAKE_FAILURE);
+								throw new HandshakeException("Unknown key exchange algorithm: " + keyExchange,
+										alertMessage);
+						}
+						handshakeMessages = ByteArrayUtils.concatenate(handshakeMessages,
+								clientKeyExchange.getRawMessage());
+						break;
+
+					case CERTIFICATE_VERIFY:
+						receivedCertificateVerify((CertificateVerify) fragment);
+						break;
+
+					case FINISHED:
+						flight = receivedClientFinished((Finished) fragment);
+						break;
+
+					default:
+						AlertMessage alertMessage = new AlertMessage(AlertLevel.FATAL,
+								AlertDescription.UNEXPECTED_MESSAGE);
+						throw new HandshakeException("Server received unexpected handshake message:\n"
+								+ fragment.toString(), alertMessage);
 				}
-				handshakeMessages = ByteArrayUtils.concatenate(handshakeMessages, clientKeyExchange.getRawMessage());
-				break;
 
-			case CERTIFICATE_VERIFY:
-				receivedCertificateVerify((CertificateVerify) fragment);
-				break;
-
-			case FINISHED:
-				flight = receivedClientFinished((Finished) fragment);
 				break;
 
 			default:
-				AlertMessage alertMessage = new AlertMessage(AlertLevel.FATAL, AlertDescription.UNEXPECTED_MESSAGE);
-				throw new HandshakeException("Server received unexpected handshake message:\n" + fragment.toString(), alertMessage);
-			}
-
-			break;
-
-		default:
-			AlertMessage alertMessage = new AlertMessage(AlertLevel.FATAL, AlertDescription.HANDSHAKE_FAILURE);
-			throw new HandshakeException("Server received not supported record:\n" + record.toString(), alertMessage);
+				AlertMessage alertMessage = new AlertMessage(AlertLevel.FATAL, AlertDescription.HANDSHAKE_FAILURE);
+				throw new HandshakeException("Server received not supported record:\n" + record.toString(),
+						alertMessage);
 		}
-		
+
 		if (flight == null) {
 			Record nextMessage = null;
 			// check queued message, if it is now their turn
-			for (Record queuedMessage : queuedMessages) {
+			for(Record queuedMessage: queuedMessages) {
 				if (processMessageNext(queuedMessage)) {
 					// queuedMessages.remove(queuedMessage);
 					nextMessage = queuedMessage;
@@ -239,11 +244,13 @@ public class ServerHandshaker extends Handshaker {
 			}
 		}
 		if (LOGGER.isLoggable(Level.FINE)) {
-		    LOGGER.fine("DTLS Message processed (" + endpointAddress.toString() + "):\n" + record.toString());
+			LOGGER.fine("DTLS Message processed (" + endpointAddress.toString() + "):\n" + record.toString());
+
+			// System.out.printf("ServerHandshaker/processMessage: flight is null %b\n", flight == null);
 		}
 		return flight;
 	}
-	
+
 	/**
 	 * If the server requires mutual authentication, the client must send its
 	 * certificate.
@@ -263,20 +270,20 @@ public class ServerHandshaker extends Handshaker {
 		clientCertificate.verifyCertificate(rootCertificates);
 		clientPublicKey = clientCertificate.getPublicKey();
 		session.setPeerRawPublicKey(clientPublicKey);
-		
+
 		// TODO why don't we also update the MessageDigest at this point?
 		handshakeMessages = ByteArrayUtils.concatenate(handshakeMessages, clientCertificate.getRawMessage());
 	}
 
 	/**
-	 * Verifies the client's CertificateVerify message and if verification fails,
-	 * aborts and sends Alert message.
+	 * Verifies the client's CertificateVerify message and if verification
+	 * fails, aborts and sends Alert message.
 	 * 
 	 * @param message
 	 *            the client's CertificateVerify.
 	 * @return <code>null</code> if the signature can be verified, otherwise a
 	 *         flight containing an Alert.
-	 * @throws HandshakeException 
+	 * @throws HandshakeException
 	 */
 	private void receivedCertificateVerify(CertificateVerify message) throws HandshakeException {
 		certificateVerify = message;
@@ -294,18 +301,18 @@ public class ServerHandshaker extends Handshaker {
 	 * @param message
 	 *            the client's {@link Finished} message.
 	 * @return the server's last {@link DTLSFlight}.
-	 * @throws HandshakeException 
+	 * @throws HandshakeException
 	 */
 	private DTLSFlight receivedClientFinished(Finished message) throws HandshakeException {
 		if (lastFlight != null) {
 			return null;
 		}
-		
+
 		// check if client sent all expected messages
-		// (i.e. ClientCertificate/CertificateVerify when server sent CertificateRequest)
-		if (keyExchange == CipherSuite.KeyExchangeAlgorithm.EC_DIFFIE_HELLMAN && 
-				clientAuthenticationRequired && 
-				(clientCertificate == null || certificateVerify == null)) {
+		// (i.e. ClientCertificate/CertificateVerify when server sent
+		// CertificateRequest)
+		if (keyExchange == CipherSuite.KeyExchangeAlgorithm.EC_DIFFIE_HELLMAN && clientAuthenticationRequired
+				&& (clientCertificate == null || certificateVerify == null)) {
 			AlertMessage alert = new AlertMessage(AlertLevel.FATAL, AlertDescription.HANDSHAKE_FAILURE);
 			throw new HandshakeException("Client did not send required authentication messages.", alert);
 		}
@@ -410,16 +417,13 @@ public class ServerHandshaker extends Handshaker {
 			// currently only NULL compression supported, no negotiation needed
 			CompressionMethod compressionMethod = CompressionMethod.NULL;
 			setCompressionMethod(compressionMethod);
-			
-			
+
 			HelloExtensions serverHelloExtensions = null;
-			ClientCertificateTypeExtension clientCertificateTypeExtension = message
-					.getClientCertificateTypeExtension();
+			ClientCertificateTypeExtension clientCertificateTypeExtension = message.getClientCertificateTypeExtension();
 			if (clientCertificateTypeExtension != null) {
 				// choose certificate type from client's list
 				// of preferred client certificate types
-				CertificateType certType = negotiateCertificateType(
-						clientCertificateTypeExtension,
+				CertificateType certType = negotiateCertificateType(clientCertificateTypeExtension,
 						supportedClientCertificateTypes);
 				serverHelloExtensions = new HelloExtensions();
 				// the certificate type requested from the client
@@ -432,13 +436,12 @@ public class ServerHandshaker extends Handshaker {
 					session.setReceiveRawPublicKey(true);
 				}
 			}
-			
+
 			CertificateTypeExtension serverCertificateTypeExtension = message.getServerCertificateTypeExtension();
 			if (serverCertificateTypeExtension != null) {
 				// choose certificate type from client's list
 				// of preferred server certificate types
-				CertificateType certType = negotiateCertificateType(
-						serverCertificateTypeExtension,
+				CertificateType certType = negotiateCertificateType(serverCertificateTypeExtension,
 						supportedServerCertificateTypes);
 				if (serverHelloExtensions == null) {
 					serverHelloExtensions = new HelloExtensions();
@@ -454,7 +457,7 @@ public class ServerHandshaker extends Handshaker {
 					session.setSendRawPublicKey(true);
 				}
 			}
-			
+
 			if (keyExchange == CipherSuite.KeyExchangeAlgorithm.EC_DIFFIE_HELLMAN) {
 				// if we chose a ECC cipher suite, the server should send the
 				// supported point formats extension in its ServerHello
@@ -466,10 +469,11 @@ public class ServerHandshaker extends Handshaker {
 				HelloExtension ext3 = new SupportedPointFormatsExtension(formats);
 				serverHelloExtensions.addExtension(ext3);
 			}
-			
-			ServerHello serverHello = new ServerHello(serverVersion, serverRandom, sessionId, cipherSuite, compressionMethod, serverHelloExtensions);
+
+			ServerHello serverHello = new ServerHello(serverVersion, serverRandom, sessionId, cipherSuite,
+					compressionMethod, serverHelloExtensions);
 			flight.addMessage(wrapMessage(serverHello));
-			
+
 			// update the handshake hash
 			md.update(serverHello.toByteArray());
 			handshakeMessages = ByteArrayUtils.concatenate(handshakeMessages, serverHello.toByteArray());
@@ -479,18 +483,19 @@ public class ServerHandshaker extends Handshaker {
 			 */
 			CertificateMessage certificateMessage = null;
 			switch (keyExchange) {
-			case EC_DIFFIE_HELLMAN:
-				if (session.sendRawPublicKey()){
-					certificateMessage = new CertificateMessage(publicKey.getEncoded());
-				} else {
-					certificateMessage = new CertificateMessage(certificates);
-				}
-				break;
+				case EC_DIFFIE_HELLMAN:
+					if (session.sendRawPublicKey()) {
+						certificateMessage = new CertificateMessage(publicKey.getEncoded());
+					}
+					else {
+						certificateMessage = new CertificateMessage(certificates);
+					}
+					break;
 
-			default:
-				// NULL and PSK do not require the Certificate message
-				// See http://tools.ietf.org/html/rfc4279#section-2
-				break;
+				default:
+					// NULL and PSK do not require the Certificate message
+					// See http://tools.ietf.org/html/rfc4279#section-2
+					break;
 			}
 			if (certificateMessage != null) {
 				flight.addMessage(wrapMessage(certificateMessage));
@@ -505,29 +510,33 @@ public class ServerHandshaker extends Handshaker {
 			ServerKeyExchange serverKeyExchange = null;
 			SignatureAndHashAlgorithm signatureAndHashAlgorithm = null;
 			switch (keyExchange) {
-			case EC_DIFFIE_HELLMAN:
-				// TODO SHA256withECDSA is default but should be configurable
-				signatureAndHashAlgorithm = new SignatureAndHashAlgorithm(HashAlgorithm.SHA256, SignatureAlgorithm.ECDSA);
-				int namedCurveId = negotiateNamedCurve(message.getSupportedEllipticCurvesExtension());
-				ecdhe = new ECDHECryptography(namedCurveId);
-				serverKeyExchange = new ECDHServerKeyExchange(signatureAndHashAlgorithm, ecdhe, privateKey, clientRandom, serverRandom, namedCurveId);
-				break;
+				case EC_DIFFIE_HELLMAN:
+					// TODO SHA256withECDSA is default but should be
+					// configurable
+					signatureAndHashAlgorithm = new SignatureAndHashAlgorithm(HashAlgorithm.SHA256,
+							SignatureAlgorithm.ECDSA);
+					int namedCurveId = negotiateNamedCurve(message.getSupportedEllipticCurvesExtension());
+					ecdhe = new ECDHECryptography(namedCurveId);
+					serverKeyExchange = new ECDHServerKeyExchange(signatureAndHashAlgorithm, ecdhe, privateKey,
+							clientRandom, serverRandom, namedCurveId);
+					break;
 
-			case PSK:
-				/*
-				 * If the identity is based on the domain name, servers SHOULD
-				 * NOT send an identity hint and clients MUST ignore it.
-				 * Are there use cases that different PSKs are used for different
-				 * actions or time periods? How to configure the hint then? 
-				 */
-				// serverKeyExchange = new PSKServerKeyExchange("TODO");
-				break;
+				case PSK:
+					/*
+					 * If the identity is based on the domain name, servers
+					 * SHOULD NOT send an identity hint and clients MUST ignore
+					 * it. Are there use cases that different PSKs are used for
+					 * different actions or time periods? How to configure the
+					 * hint then?
+					 */
+					// serverKeyExchange = new PSKServerKeyExchange("TODO");
+					break;
 
-			default:
-				// NULL does not require the server's key exchange message
-				break;
+				default:
+					// NULL does not require the server's key exchange message
+					break;
 			}
-			
+
 			if (serverKeyExchange != null) {
 				flight.addMessage(wrapMessage(serverKeyExchange));
 				md.update(serverKeyExchange.toByteArray());
@@ -540,10 +549,11 @@ public class ServerHandshaker extends Handshaker {
 			if (clientAuthenticationRequired && signatureAndHashAlgorithm != null) {
 
 				CertificateRequest certificateRequest = new CertificateRequest();
-				
+
 				// TODO make this variable, reasonable values
 				certificateRequest.addCertificateType(ClientCertificateType.ECDSA_SIGN);
-				certificateRequest.addSignatureAlgorithm(new SignatureAndHashAlgorithm(signatureAndHashAlgorithm.getHash(), signatureAndHashAlgorithm.getSignature()));
+				certificateRequest.addSignatureAlgorithm(new SignatureAndHashAlgorithm(signatureAndHashAlgorithm
+						.getHash(), signatureAndHashAlgorithm.getSignature()));
 				certificateRequest.addCertificateAuthorities(rootCertificates);
 
 				flight.addMessage(wrapMessage(certificateRequest));
@@ -559,9 +569,11 @@ public class ServerHandshaker extends Handshaker {
 			md.update(serverHelloDone.toByteArray());
 			handshakeMessages = ByteArrayUtils.concatenate(handshakeMessages, serverHelloDone.toByteArray());
 
-		} else {
+		}
+		else {
 			// either first time, or cookies did not match
-			HelloVerifyRequest helloVerifyRequest = new HelloVerifyRequest(new ProtocolVersion(), generateCookie(message));
+			HelloVerifyRequest helloVerifyRequest = new HelloVerifyRequest(new ProtocolVersion(),
+					generateCookie(message));
 			flight.addMessage(wrapMessage(helloVerifyRequest));
 			flight.setRetransmissionNeeded(false);
 		}
@@ -601,16 +613,16 @@ public class ServerHandshaker extends Handshaker {
 		session.setPskIdentity(identity);
 
 		byte[] psk = pskStore.getKey(identity);
-		
+
 		if (LOGGER.isLoggable(Level.INFO)) {
-		    LOGGER.info("Client " + endpointAddress.toString() + " used PSK identity: " + identity);
+			LOGGER.info("Client " + endpointAddress.toString() + " used PSK identity: " + identity);
 		}
-		
+
 		if (psk == null) {
 			AlertMessage alert = new AlertMessage(AlertLevel.FATAL, AlertDescription.HANDSHAKE_FAILURE);
 			throw new HandshakeException("No preshared secret found for identity: " + identity, alert);
 		}
-		
+
 		return generatePremasterSecretFromPSK(psk);
 	}
 
@@ -668,11 +680,12 @@ public class ServerHandshaker extends Handshaker {
 
 			cookie = Handshaker.doHMAC(md, secret, data);
 		} catch (NoSuchAlgorithmException e) {
-			LOGGER.log(Level.SEVERE,"Could not instantiate message digest algorithm.",e);
+			LOGGER.log(Level.SEVERE, "Could not instantiate message digest algorithm.", e);
 		}
 		if (cookie == null) {
 			return new Cookie(new Random(new SecureRandom()).getRandomBytes());
-		} else {
+		}
+		else {
 			return new Cookie(cookie);
 		}
 	}
@@ -693,7 +706,9 @@ public class ServerHandshaker extends Handshaker {
 
 		if (!valid) {
 			if (LOGGER.isLoggable(Level.INFO)) {
-			    LOGGER.info("Client's (" + endpointAddress.toString() + ") cookie did not match expected cookie:\n" + "Expected: " + ByteArrayUtils.toHexString(expected.getCookie()) + "\n" + "Actual: " + ByteArrayUtils.toHexString(actual.getCookie()));
+				LOGGER.info("Client's (" + endpointAddress.toString() + ") cookie did not match expected cookie:\n"
+						+ "Expected: " + ByteArrayUtils.toHexString(expected.getCookie()) + "\n" + "Actual: "
+						+ ByteArrayUtils.toHexString(actual.getCookie()));
 			}
 		}
 
@@ -724,7 +739,8 @@ public class ServerHandshaker extends Handshaker {
 		ProtocolVersion version = new ProtocolVersion();
 		if (clientVersion.compareTo(version) >= 0) {
 			return new ProtocolVersion();
-		} else {
+		}
+		else {
 			AlertMessage alert = new AlertMessage(AlertLevel.FATAL, AlertDescription.PROTOCOL_VERSION);
 			throw new HandshakeException("The server only supports DTLS v1.2", alert);
 		}
@@ -742,12 +758,13 @@ public class ServerHandshaker extends Handshaker {
 	 */
 	private CipherSuite negotiateCipherSuite(List<CipherSuite> cipherSuites) throws HandshakeException {
 		// the client's list is sorted by preference
-		for (CipherSuite cipherSuite : cipherSuites) {
+		for(CipherSuite cipherSuite: cipherSuites) {
 			if (supportedCipherSuites.contains(cipherSuite) && cipherSuite != CipherSuite.SSL_NULL_WITH_NULL_NULL) {
 				return cipherSuite;
 			}
 		}
-		// if none of the client's proposed cipher suites matches throw exception
+		// if none of the client's proposed cipher suites matches throw
+		// exception
 		AlertMessage alert = new AlertMessage(AlertLevel.FATAL, AlertDescription.HANDSHAKE_FAILURE);
 		throw new HandshakeException("No supported cipher suite proposed by the client", alert);
 	}
@@ -763,22 +780,26 @@ public class ServerHandshaker extends Handshaker {
 	 */
 	private int negotiateNamedCurve(SupportedEllipticCurvesExtension extension) throws HandshakeException {
 		if (extension != null) {
-			for (Integer curveID : extension.getEllipticCurveList()) {
+			for(Integer curveID: extension.getEllipticCurveList()) {
 				// choose first proposal which is supported
 				if (ECDHServerKeyExchange.NAMED_CURVE_PARAMETERS.get(curveID) != null) {
 					return curveID;
 				}
 			}
-		} else {
-			// extension was not present in ClientHello, we can't continue the handshake
+		}
+		else {
+			// extension was not present in ClientHello, we can't continue the
+			// handshake
 			AlertMessage alert = new AlertMessage(AlertLevel.FATAL, AlertDescription.HANDSHAKE_FAILURE);
-			throw new HandshakeException("The client did not provide the supported elliptic curves extension although ECC cipher suite chosen.", alert);
+			throw new HandshakeException(
+					"The client did not provide the supported elliptic curves extension although ECC cipher suite chosen.",
+					alert);
 		}
 		AlertMessage alert = new AlertMessage(AlertLevel.FATAL, AlertDescription.HANDSHAKE_FAILURE);
 		throw new HandshakeException("No proposed elliptic curve supported.", alert);
 
 	}
-	
+
 	/**
 	 * Chooses the certificate type which will be used in the rest of the
 	 * handshake.
@@ -792,17 +813,15 @@ public class ServerHandshaker extends Handshaker {
 	 *             if none of the client's preferred types is supported by this
 	 *             server
 	 */
-	private CertificateType negotiateCertificateType(
-			CertificateTypeExtension extension,
+	private CertificateType negotiateCertificateType(CertificateTypeExtension extension,
 			List<CertificateType> supportedTypes) throws HandshakeException {
-		for (CertificateType preferredType : extension.getCertificateTypes()) {
+		for(CertificateType preferredType: extension.getCertificateTypes()) {
 			if (supportedTypes.contains(preferredType)) {
 				return preferredType;
 			}
 		}
-		throw new HandshakeException("No supported certificate type found",
-				new AlertMessage(AlertLevel.FATAL,
-						AlertDescription.UNSUPPORTED_CERTIFICATE));
+		throw new HandshakeException("No supported certificate type found", new AlertMessage(AlertLevel.FATAL,
+				AlertDescription.UNSUPPORTED_CERTIFICATE));
 
 	}
 

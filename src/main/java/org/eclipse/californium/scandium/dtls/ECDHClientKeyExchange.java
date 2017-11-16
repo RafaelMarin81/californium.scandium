@@ -59,6 +59,9 @@ public class ECDHClientKeyExchange extends ClientKeyExchange {
 		ECParameterSpec params = publicKey.getParams();
 		
 		pointEncoded = ECDHECryptography.encodePoint(point, params.getCurve());
+		
+//		System.out.printf("ECDHClientKeyExchange/Constructor2: pointEncoded\n%s\n",
+//			org.eclipse.californium.scandium.util.Utils.asHexCut20(pointEncoded, 0, pointEncoded.length));
 	}
 
 	/**

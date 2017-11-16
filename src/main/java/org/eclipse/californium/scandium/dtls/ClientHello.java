@@ -166,6 +166,9 @@ public class ClientHello extends HandshakeMessage {
 		this.random = new Random(secureRandom);
 		this.sessionId = session.getSessionIdentifier();
 		this.cookie = new Cookie();
+		
+//		System.out.printf("ClientHello/C2: sessionIdIsNull %b\n", session.getSessionIdentifier() == null);
+		
 		addCipherSuite(session.getWriteState().getCipherSuite());
 		addCompressionMethod(session.getReadState().getCompressionMethod());
 	}
@@ -190,6 +193,13 @@ public class ClientHello extends HandshakeMessage {
         writer.write(clientVersion.getMinor(), VERSION_BITS);
 
         writer.writeBytes(random.getRandomBytes());
+        
+//        if (sessionId == null) {
+//        	System.out.printf("ClientHello/fragmentToByteArray: sessionId null\n");
+//        }
+//        else {
+//        	System.out.printf("ClientHello/fragmentToByteArray: sessionId not null - length %d\n", sessionId.length());
+//        }
 
         writer.write(sessionId.length(), SESSION_ID_LENGTH_BITS);
         writer.writeBytes(sessionId.getSessionId());

@@ -40,6 +40,8 @@ public class ResumingClientHandshaker extends ClientHandshaker {
 
 	public ResumingClientHandshaker(InetSocketAddress endpointAddress, RawData message, DTLSSession session, Certificate[] rootCerts, DTLSConnectorConfig config) {
 		super(endpointAddress, message, session, rootCerts, config);
+		
+//		System.out.printf("ResumingClientHandshaker/C1: sessionIdIsNull %b\n", session.getSessionIdentifier() == null);
 	}
 	
 	// Methods ////////////////////////////////////////////////////////

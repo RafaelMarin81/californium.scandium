@@ -538,6 +538,8 @@ public class DTLSConnector extends ConnectorBase {
 	private void sendFlight(DTLSFlight flight) {
 		byte[] payload = new byte[] {};
 		
+//		System.out.printf("DTLSConnector/sendFlight: address %s\n", flight.getPeerAddress().toString());
+		
 		// put as many records into one datagram as allowed by the block size
 		List<DatagramPacket> datagrams = new ArrayList<DatagramPacket>();
 
@@ -553,6 +555,9 @@ public class DTLSConnector extends ConnectorBase {
 				// can't add the next record, send current payload as datagram
 				DatagramPacket datagram = new DatagramPacket(payload, payload.length, flight.getPeerAddress().getAddress(), flight.getPeerAddress().getPort());
 				datagrams.add(datagram);
+				
+//				System.out.printf("    P1 - length %d\n", payload.length);
+				
 				payload = new byte[] {};
 			}
 
@@ -561,6 +566,8 @@ public class DTLSConnector extends ConnectorBase {
 		}
 		DatagramPacket datagram = new DatagramPacket(payload, payload.length, flight.getPeerAddress().getAddress(), flight.getPeerAddress().getPort());
 		datagrams.add(datagram);
+		
+//		System.out.printf("    P2 - length %d\n", payload.length);
 
 		// send it over the UDP socket
 		try {
